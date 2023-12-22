@@ -1,0 +1,5 @@
+.ipynb_checkpoints/
+.idea/
+__pycache__/
+**.pkl
+yahoo/ydata-fp-td-clicks-v1_0.20090501

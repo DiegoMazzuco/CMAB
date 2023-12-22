@@ -8,7 +8,16 @@ import matplotlib.colors as colors
 class Kmeans:
 
     def __init_centroids(self, xs):
-        centroids_idx = np.random.choice(range(len(xs)), self.k, replace=False)
+        centroids_idx = np.random.choice(range(len(xs)), 1, replace=False)
+
+        for j in range(self.k-1):
+
+            distance = np.zeros([j+1, len(xs)])
+            for i in range(j+1):
+                distance[i, :] = [np.linalg.norm(xs[centroids_idx[i]] - x) for x in xs]
+            distance = np.min(distance, axis=0)
+            new_centroid_id = np.argmax(distance)
+            centroids_idx = np.append(centroids_idx, new_centroid_id)
         self.centroids = xs[centroids_idx]
 
     def __init__(self, k: int, max_iterations=500):
@@ -40,7 +49,6 @@ class Kmeans:
 
         self.xs = xs
         self.labels = labels
-        self.graph()
         return labels
 
     def graph(self, labels=None):
@@ -65,6 +73,8 @@ if __name__ == '__main__':
     data = np.random.rand(12, 2)
     data[0:4] = data[0:4] - [1, 1]
     data[4:8] = data[4:8] + [2, -2]
+    plt.scatter(data[:, 0], data[:,1])
+    plt.show()
     kmeans = Kmeans(3)
     labels = kmeans.fit(data)
 
