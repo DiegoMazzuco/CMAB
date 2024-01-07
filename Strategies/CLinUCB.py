@@ -1,15 +1,12 @@
 import numpy as np
 
-from .Clusters import Kmeans
 from .MAB import MAB
 from .Rewards import BernoulliFeature
 
 
 class CLinUCB(MAB):
     def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
-                 cluster_amount=2, cluster_it=50, cluster_initial_start = 2000, cluster_iteration_ex=1000,
-                 cluster_mix_rew_start=-1,
-                 lamb=1):
+                cluster_initial_start = 2000, cluster_iteration_ex=1000, cluster_mix_rew_start=-1, lamb=1):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
 
@@ -17,15 +14,16 @@ class CLinUCB(MAB):
         self.b = np.dstack([np.zeros([d, 1])] * user_amount)
         self.thetas = np.zeros([d, user_amount])
         self.alpha = alpha
-        self.kmeans = Kmeans(cluster_amount, cluster_it)
         self.cluster = np.zeros(user_amount)
         self.cluster_initial_start = cluster_initial_start
         self.cluster_iteration_ex = cluster_iteration_ex
         self.cluster_mix_rew_start = cluster_mix_rew_start
         self.iteration = 0
 
-    def get_kmeans(self):
-        return self.kmeans
+        self.model = None
+
+    def get_model(self):
+        return self.model
 
     def calc_ucb(self, i, user_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
@@ -56,7 +54,7 @@ class CLinUCB(MAB):
         #Se actualiza el cluster
         if self.cluster_initial_start != -1 and self.iteration > self.cluster_initial_start and\
                 self.iteration % self.cluster_iteration_ex == 0:
-            self.cluster = self.kmeans.fit(self.thetas.T)
+            self.cluster = self.model.fit(self.thetas.T)
         self.iteration += 1
 
     def __reward_update_one_theta(self, reward, x, user_id, factor_crecimiento):
