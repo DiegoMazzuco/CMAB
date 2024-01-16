@@ -14,4 +14,5 @@ class ALinUCB(CLinUCB):
                          cluster_mix_rew_start, lamb)
         if clusters_amount is None:
             clusters_amount = [2, 3, 4]
-        self.model = Agglomerative(clusters_amount)
+        self.len_c = len(clusters_amount)
+        self.model = Agglomerative(clusters_amount, user_amount)

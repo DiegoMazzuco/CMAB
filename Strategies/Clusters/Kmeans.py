@@ -20,9 +20,9 @@ class Kmeans:
             centroids_idx = np.append(centroids_idx, new_centroid_id)
         self.centroids = xs[centroids_idx]
 
-    def __init__(self, k: int, max_iterations=500):
+    def __init__(self, k: int, max_iterations=500, user_amount = 10):
         self.xs = None
-        self.labels = None
+        self.labels = np.zeros(user_amount)
         self.k = k
         self.max_iterations = max_iterations
         self.centroids = None
@@ -49,7 +49,12 @@ class Kmeans:
 
         self.xs = xs
         self.labels = labels
-        return labels
+
+    def get_labels(self):
+        return self.labels
+
+    def update(self, reward):
+        return
 
     def graph(self, labels=None):
         if labels is None:

@@ -27,7 +27,8 @@ class CLinUCB(MAB):
 
     def calc_ucb(self, i, user_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
-        cluster_index = [i for i, elem in enumerate(self.cluster) if elem == self.cluster[user_id]]
+        labels = self.model.get_labels()
+        cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
 
         A = np.zeros((self.d, self.d))
         theta = np.zeros(self.d)
@@ -42,19 +43,23 @@ class CLinUCB(MAB):
         return p[0]
 
     def reward_update(self, reward, i, user_id):
+        self.model.update(reward)
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
         self.__reward_update_one_theta(reward, x, user_id, 1)
-        cluster_index = [i for i, elem in enumerate(self.cluster) if elem == self.cluster[user_id]]
-        cluster_index.remove(user_id)
-        #Aprendizaje entre todos
-        if self.cluster_mix_rew_start != -1 and self.iteration > self.cluster_mix_rew_start:
-            for cl_id in cluster_index:
-                self.__reward_update_one_theta(reward, x, cl_id, 0.1)
+
+        # Esto es para que el aprendizaje afecta otros thetas en el mismo cluster
+
+        # cluster_index = [i for i, elem in enumerate(self.cluster) if elem == self.cluster[user_id]]
+        # cluster_index.remove(user_id)
+        # #Aprendizaje entre todos
+        # if self.cluster_mix_rew_start != -1 and self.iteration > self.cluster_mix_rew_start:
+        #     for cl_id in cluster_index:
+        #         self.__reward_update_one_theta(reward, x, cl_id, 0.1)
 
         #Se actualiza el cluster
         if self.cluster_initial_start != -1 and self.iteration > self.cluster_initial_start and\
                 self.iteration % self.cluster_iteration_ex == 0:
-            self.cluster = self.model.fit(self.thetas.T)
+            self.model.fit(self.thetas.T)
         self.iteration += 1
 
     def __reward_update_one_theta(self, reward, x, user_id, factor_crecimiento):

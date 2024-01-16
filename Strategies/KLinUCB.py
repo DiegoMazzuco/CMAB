@@ -13,4 +13,4 @@ class KLinUCB(CLinUCB):
         super().__init__(k, iters, reward_class, d, user_amount, alpha,
                          cluster_initial_start, cluster_iteration_ex,
                          cluster_mix_rew_start, lamb)
-        self.model = Kmeans(cluster_amount, cluster_it)
+        self.model = Kmeans(cluster_amount, cluster_it, user_amount)
