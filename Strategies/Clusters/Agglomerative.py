@@ -22,8 +22,6 @@ class Agglomerative():
 
         self.x = x
 
-        return self.labels
-
     def get_labels(self):
         return self.labels
 
@@ -31,12 +29,13 @@ class Agglomerative():
         if labels is None:
             labels = self.labels
 
-        for i in range(self.ks[0]):
-            c = list(colors.cnames.values())[i + 120]
-            filtered_label = self.x[labels == i + 1]
-            plt.scatter(filtered_label[:, 0], filtered_label[:, 1], color=c)
+        for i in range(len(self.ks)):
+            for j in range(self.ks[i]):
+                c = list(colors.cnames.values())[j + 120]
+                filtered_label = self.x[labels[:, i] == j + 1]
+                plt.scatter(filtered_label[:, 0], filtered_label[:, 1], color=c)
 
-        plt.show()
+            plt.show()
 
 
 # Tests
@@ -48,11 +47,9 @@ if __name__ == '__main__':
     data[0:4] = data[0:4] - [1, 1]
     data[4:8] = data[4:8] + [0.5, -0.5]
 
-    clusters = Agglomerative([2, 3, 4], len(data)).fit(data)
+    model = Agglomerative([2, 3, 4], len(data))
+    model.fit(data)
 
-    plt.scatter(data[:, 0], data[:, 1], c=clusters[:, 0])
-    plt.show()
-    plt.scatter(data[:, 0], data[:, 1], c=clusters[:, 1])
-    plt.show()
-    plt.scatter(data[:, 0], data[:, 1], c=clusters[:, 2])
-    plt.show()
+    model.graph()
+
+
