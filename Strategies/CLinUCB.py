@@ -8,8 +8,8 @@ import matplotlib.colors as colors
 
 class CLinUCB(MAB):
     def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
-                 clusters_amounts,
-                 cluster_initial_start=0, cluster_iteration_ex=1000, cluster_mix_rew_start=-1, lamb=1):
+                 clusters_amounts, lamb=1,
+                 cluster_initial_start=1000, cluster_iteration_ex=1000, cluster_mix_rew_start=-1):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
 
@@ -79,16 +79,16 @@ class CLinUCB(MAB):
 
     def __reward_update_one_theta(self, reward, x, user_id, factor_crecimiento):
         #Check if this useful
-        reward = reward
         self.A[:, :, user_id] += np.dot(x, x.T) * factor_crecimiento
         self.b[:, :, user_id] += reward * x * factor_crecimiento
         A_inv = np.linalg.inv(self.A[:, :, user_id])
-        self.thetas[:, user_id] = np.dot(A_inv, self.b[:, :, user_id])[:, 0]
+        theta = np.dot(A_inv, self.b[:, :, user_id])[:, 0]
+        self.thetas[:, user_id] = theta
 
 
 class Reward_Por_Cluster:
 
-    def __init__(self, clusters_amounts, iters):
+    def __init__(self, clusters_amounts, iters, cluster_penalizador = 0.1):
         # Step count
         self.n = 0
         # cluster amount
@@ -97,6 +97,8 @@ class Reward_Por_Cluster:
         # Step count for each arm
         self.k_reward = np.zeros(len(clusters_amounts))
         self.k_rewards = np.zeros((len(clusters_amounts), iters))
+        self.best_options = np.zeros((iters))
+        self.cluster_penalizador =  cluster_penalizador # penalizador por cantidad cluster
 
     def update(self, reward, probs):
         # Update counts
@@ -106,13 +108,23 @@ class Reward_Por_Cluster:
             # Actualizar resultado por cada cluster
             self.k_reward[i] = self.k_reward[i] + (reward * probs[i] - self.k_reward[i]) / self.n
             self.k_rewards[i, self.n-1] = self.k_reward[i]
+        self.best_options[self.n-1] = self.clusters_amounts[self.best_option()]
 
     def best_option(self):
-        return np.argmax(self.k_reward)
+        rewards_ponderados = [self.k_reward[i] * (1 - self.cluster_penalizador * self.clusters_amounts[i]
+                                                  / np.max(self.clusters_amounts))
+                              for i in range(self.cluster_amount)]
+        return np.argmax(rewards_ponderados)
 
     def graph(self):
+        plt.figure()
         for i in range(self.cluster_amount):
             c = list(colors.cnames.values())[i + 120]
             plt.plot(self.k_rewards[i, :], label="cluster" + str(self.clusters_amounts[i]), color=c)
         plt.legend(bbox_to_anchor=(1.3, 0.5))
+        plt.show()
+        plt.figure()
+        plt.plot(self.best_options, label="best option")
+        plt.ylim(0, max(self.clusters_amounts)+1)
+
         plt.show()

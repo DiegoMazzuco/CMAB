@@ -49,9 +49,11 @@ class BernoulliFeature:
                 theta = cluster_theta + self.epsilon_cluster * np.random.randn(self.d)
                 theta /= np.linalg.norm(theta)
                 self.best_thetas[count, :] = theta
-                theta += self.epsilon * np.random.randn(self.d)
-                theta /= np.linalg.norm(theta)
-                self.thetas[count, :] = theta
+        np.random.shuffle(self.best_thetas)
+        for i in range(self.userAmount):
+            theta = self.best_thetas[i, :] + self.epsilon * np.random.randn(self.d)
+            theta /= np.linalg.norm(theta)
+            self.thetas[i, :] = theta
 
     def init_contexto(self):
         for i in range(self.k):

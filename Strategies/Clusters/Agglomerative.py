@@ -34,7 +34,8 @@ class Agglomerative():
                 c = list(colors.cnames.values())[j + 120]
                 filtered_label = self.x[labels[:, i] == j + 1]
                 plt.scatter(filtered_label[:, 0], filtered_label[:, 1], color=c)
-
+            plt.xlim(-1, 1)
+            plt.ylim(-1, 1)
             plt.show()
 
 

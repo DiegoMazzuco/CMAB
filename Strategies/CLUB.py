@@ -63,7 +63,6 @@ class CLUB(MAB):
 
     def __reward_update_one_theta(self, reward, x, user_id, factor_crecimiento):
         # Check if this useful
-        reward = reward
         self.A[:, :, user_id] += np.dot(x, x.T) * factor_crecimiento
         self.b[:, :, user_id] += reward * x * factor_crecimiento
         A_inv = np.linalg.inv(self.A[:, :, user_id])
