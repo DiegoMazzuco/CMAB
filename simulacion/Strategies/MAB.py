@@ -3,7 +3,7 @@ from abc import ABC
 import random as rd
 import numpy as np
 
-from Strategies.Rewards.BernoulliFeature import BernoulliFeature
+from simulacion.Strategies.Rewards.BernoulliFeature import BernoulliFeature
 
 
 class MAB(ABC):
