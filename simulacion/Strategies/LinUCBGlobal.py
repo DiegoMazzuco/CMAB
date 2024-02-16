@@ -5,11 +5,12 @@ from .Rewards import BernoulliFeature
 
 
 class LinUCBGlobal(MAB):
-    def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float):
+    def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
+                 lamb: float):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
 
-        self.A = np.identity(d)
+        self.A = np.identity(d) * lamb
         self.b = np.zeros([d, 1])
         self.alpha = alpha
 
