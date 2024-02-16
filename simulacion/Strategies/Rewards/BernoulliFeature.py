@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 class BernoulliFeature:
 
-    def __init__(self, k: int, d: int, user_amount: int, cluster_amount,
+    def __init__(self, k: int, d: int, user_amount: int,
                  max_prob = 0.5, epsilon=0.01, cluster_thetas = None,
                  epsilon_cluster=0.01):
         self.contextos = np.zeros((k, d))
@@ -16,12 +16,10 @@ class BernoulliFeature:
         self.d = d
         self.k = k
         self.userAmount = user_amount
-        self.cluster_amount = cluster_amount
         self.epsilon = epsilon
         self.epsilon_cluster = epsilon_cluster
         self.max_prob = max_prob
-        if cluster_thetas is not None and len(cluster_thetas) != cluster_amount:
-            raise Exception("La cantidad de thetas de cluster debe ser la misma que la cantidad clusters")
+        self.cluster_amount = len(cluster_thetas)
         self.cluster_thetas = cluster_thetas
         self.init()
 

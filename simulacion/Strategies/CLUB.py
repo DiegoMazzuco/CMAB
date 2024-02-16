@@ -33,19 +33,19 @@ class CLUB(MAB):
         self.CBPrime = np.ones(user_amount)
         self.alpha_2 = alpha_2
         self.counter = np.zeros(user_amount)
+        self.lamb = lamb
 
     def calc_ucb(self, i, user_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
         cluster_index = [i for i, elem in enumerate(self.clusters) if elem == self.clusters[user_id]]
 
-        A = np.zeros((self.d, self.d))
-        theta = np.zeros(self.d)
+        A = np.identity(self.d) * self.lamb
+        b = np.zeros([self.d, 1])
         for cl_id in cluster_index:
-            A += self.A[:, :, cl_id]
-            theta += self.thetas[:, cl_id]
-        A = A / len(cluster_index)
-        theta = theta / len(cluster_index)
+            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
+            b += self.b[:, :, cl_id]
         A_inv = np.linalg.inv(A)
+        theta = np.dot(A_inv, b)[:, 0]
         # en club se agrega un logaritmo al final con la cantidad iteraciones
         p = np.dot(theta.T, x) + self.alpha * np.sqrt(np.dot(x.T, np.dot(A_inv, x))) * np.sqrt(math.log10(self.iteration + 1))
 

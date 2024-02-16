@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 from .Clusters import Agglomerative
 from .MAB import MAB
@@ -13,6 +14,7 @@ class CLinUCB(MAB):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
 
+        self.lamb = lamb
         self.A = np.dstack([np.identity(d)] * user_amount) * lamb
         self.b = np.dstack([np.zeros([d, 1])] * user_amount)
         self.thetas = np.zeros([d, user_amount])
@@ -35,21 +37,35 @@ class CLinUCB(MAB):
 
     def calc_ucb(self, i, user_id):
         return self.calc_ucb_cluster(i, user_id, self.RC.best_option())
-
     def calc_ucb_cluster(self, i, user_id, cluster_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
         labels = self.model.get_labels()[:, cluster_id]
         cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
 
-        A = np.zeros((self.d, self.d))
-        theta = np.zeros(self.d)
+        A = np.identity(self.d) * self.lamb
+        b = np.zeros([self.d, 1])
         for cl_id in cluster_index:
-            A += self.A[:, :, cl_id]
-            theta += self.thetas[:, cl_id]
-        A = A / len(cluster_index)
-        theta = theta / len(cluster_index)
+            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
+            b += self.b[:, :, cl_id]
         A_inv = np.linalg.inv(A)
+        theta = np.dot(A_inv, b)[:, 0]
         p = np.dot(theta.T, x) + self.alpha * np.sqrt(np.dot(x.T, np.dot(A_inv, x)))
+
+        return p[0]
+
+    def calc_probabilities(self, i, user_id, cluster_id):
+        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        labels = self.model.get_labels()[:, cluster_id]
+        cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
+
+        A = np.identity(self.d) * self.lamb
+        b = np.zeros([self.d, 1])
+        for cl_id in cluster_index:
+            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
+            b += self.b[:, :, cl_id]
+        A_inv = np.linalg.inv(A)
+        theta = np.dot(A_inv, b)[:, 0]
+        p = np.dot(theta.T, x)
 
         return p[0]
 
@@ -67,7 +83,7 @@ class CLinUCB(MAB):
 
         probs = np.zeros(self.len_c)
         for j in range(self.len_c):
-            probs[j] = self.calc_ucb_cluster(i, user_id, j)
+            probs[j] = self.calc_probabilities(i, user_id, j)
 
         self.RC.update(reward, probs)
 
@@ -103,7 +119,8 @@ class Reward_Por_Cluster:
     def update(self, reward, probs):
         # Update counts
         self.n += 1
-        reward = reward/np.max(probs)
+        if np.max(probs) > 0:
+            reward = reward/np.max(probs)
         for i in range(self.cluster_amount):
             # Actualizar resultado por cada cluster
             self.k_reward[i] = self.k_reward[i] + (reward * probs[i] - self.k_reward[i]) / self.n
@@ -111,10 +128,20 @@ class Reward_Por_Cluster:
         self.best_options[self.n-1] = self.clusters_amounts[self.best_option()]
 
     def best_option(self):
-        rewards_ponderados = [self.k_reward[i] * (1 - self.cluster_penalizador * self.clusters_amounts[i]
-                                                  / np.max(self.clusters_amounts))
-                              for i in range(self.cluster_amount)]
-        return np.argmax(rewards_ponderados)
+        # Aplico BIC, para penalizar los algoritmos mas complejos con mas clusters
+        options = np.zeros(self.cluster_amount)
+        for i in range(self.cluster_amount):
+            if self.k_reward[i] != 0:
+                options[i] = -2*math.log(self.k_reward[i]) + self.cluster_penalizador * math.log(self.clusters_amounts[i])
+            else:
+                # En caso de ser 0 reward se pone como Nan para ser ignorado por el np.nanargmin
+                options[i] = np.nan
+        # Puede fallar si todos reward son 0 y por ende las options son NaN
+        try:
+            return np.nanargmin(options)
+        except:
+            # En caso que todos sean reward 0 se devuelve el que tenga menos cantidad cluster
+            return np.argmin(self.clusters_amounts)
 
     def graph(self):
         plt.figure()
