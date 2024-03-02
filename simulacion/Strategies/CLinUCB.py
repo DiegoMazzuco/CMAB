@@ -27,7 +27,7 @@ class CLinUCB(MAB):
 
         self.len_c = len(clusters_amounts)
         self.model = Agglomerative(clusters_amounts, user_amount)
-        self.RC = Reward_Por_Cluster(clusters_amounts, iters)
+        self.RC = Reward_Por_Cluster(clusters_amounts, iters, d)
 
     def get_model(self):
         return self.model
@@ -104,21 +104,19 @@ class CLinUCB(MAB):
 
 class Reward_Por_Cluster:
 
-    def __init__(self, clusters_amounts, iters, cluster_penalizador = 0.1):
+    def __init__(self, clusters_amounts, iters, d):
         # Step count
-        self.n = 0
+        self.n = 1
         # cluster amount
         self.clusters_amounts = clusters_amounts
         self.cluster_amount = len(clusters_amounts)
         # Step count for each arm
-        self.k_reward = np.zeros(len(clusters_amounts))
-        self.k_rewards = np.zeros((len(clusters_amounts), iters))
+        self.k_reward = np.ones(len(clusters_amounts))
+        self.k_rewards = np.ones((len(clusters_amounts), iters))
         self.best_options = np.zeros((iters))
-        self.cluster_penalizador =  cluster_penalizador # penalizador por cantidad cluster
+        self.d = d
 
     def update(self, reward, probs):
-        # Update counts
-        self.n += 1
         if np.max(probs) > 0:
             reward = reward/np.max(probs)
         for i in range(self.cluster_amount):
@@ -126,13 +124,15 @@ class Reward_Por_Cluster:
             self.k_reward[i] = self.k_reward[i] + (reward * probs[i] - self.k_reward[i]) / self.n
             self.k_rewards[i, self.n-1] = self.k_reward[i]
         self.best_options[self.n-1] = self.clusters_amounts[self.best_option()]
+        # Update counts
+        self.n += 1
 
     def best_option(self):
-        # Aplico BIC, para penalizar los algoritmos mas complejos con mas clusters
+        # Aplico AIC, para penalizar los algoritmos mas complejos con mas clusters
         options = np.zeros(self.cluster_amount)
         for i in range(self.cluster_amount):
             if self.k_reward[i] != 0:
-                options[i] = -2*math.log(self.k_reward[i]) + self.cluster_penalizador * math.log(self.clusters_amounts[i])
+                options[i] = -math.log(self.k_reward[i]) + self.clusters_amounts[i] * self.d * math.log(self.n) / self.n
             else:
                 # En caso de ser 0 reward se pone como Nan para ser ignorado por el np.nanargmin
                 options[i] = np.nan

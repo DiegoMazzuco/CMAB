@@ -8,7 +8,7 @@ class BernoulliFeature:
 
     def __init__(self, k: int, d: int, user_amount: int,
                  max_prob = 0.5, epsilon=0.01, cluster_thetas = None,
-                 epsilon_cluster=0.01):
+                 epsilon_cluster=0.03):
         self.contextos = np.zeros((k, d))
         self.probablities = np.zeros((user_amount, k))
         self.best_thetas = np.zeros((user_amount, d))
@@ -46,11 +46,10 @@ class BernoulliFeature:
                     continue
                 theta = cluster_theta + self.epsilon_cluster * np.random.randn(self.d)
                 theta /= np.linalg.norm(theta)
-                self.best_thetas[count, :] = theta
+                self.best_thetas[count, :] = theta * self.max_prob
         np.random.shuffle(self.best_thetas)
         for i in range(self.userAmount):
             theta = self.best_thetas[i, :] + self.epsilon * np.random.randn(self.d)
-            theta /= np.linalg.norm(theta)
             self.thetas[i, :] = theta
 
     def init_contexto(self):
@@ -106,8 +105,7 @@ class BernoulliFeature:
 
     def get_reward(self, user_id: int, a: int):
         p = np.random.rand()
-        #TODO: esta limitado entre 0 y 1 pero puede ser negativo
-        probability = np.dot(self.best_thetas[user_id], self.contextos[a]) * self.max_prob
+        probability = np.dot(self.best_thetas[user_id], self.contextos[a])
         if p < probability:
             return 1
         else:
