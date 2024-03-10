@@ -7,7 +7,7 @@ from .MAB import MAB
 from .Rewards import BernoulliFeature
 import matplotlib.colors as colors
 
-class CLinUCB(MAB):
+class RCLinUCB(MAB):
     def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
                  clusters_amounts, lamb=1,
                  cluster_initial_start=1000, cluster_iteration_ex=1000, cluster_mix_rew_start=-1):
@@ -16,8 +16,18 @@ class CLinUCB(MAB):
 
         self.lamb = lamb
         self.A = np.dstack([np.identity(d)] * user_amount) * lamb
+        self.A_inv = np.dstack([np.identity(d)] * user_amount) / lamb
         self.b = np.dstack([np.zeros([d, 1])] * user_amount)
         self.thetas = np.zeros([d, user_amount])
+
+        # clusters
+        self.models_amount = len(clusters_amounts)
+        max_clust_amount = max(clusters_amounts)
+        self.clusters_amounts = clusters_amounts
+        self.theta_clust = np.zeros([d, self.models_amount, max_clust_amount])
+        A_inv_clust = np.dstack([np.identity(d)] * self.models_amount * max_clust_amount) / lamb
+        self.A_inv_clust = A_inv_clust.reshape((d,d,self.models_amount,max_clust_amount))
+
         self.alpha = alpha
         self.cluster = np.zeros(user_amount)
         self.cluster_initial_start = cluster_initial_start
@@ -25,7 +35,6 @@ class CLinUCB(MAB):
         self.cluster_mix_rew_start = cluster_mix_rew_start
         self.iteration = 0
 
-        self.len_c = len(clusters_amounts)
         self.model = Agglomerative(clusters_amounts, user_amount)
         self.RC = Reward_Por_Cluster(clusters_amounts, iters, d)
 
@@ -37,69 +46,89 @@ class CLinUCB(MAB):
 
     def calc_ucb(self, i, user_id):
         return self.calc_ucb_cluster(i, user_id, self.RC.best_option())
-    def calc_ucb_cluster(self, i, user_id, cluster_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
-        labels = self.model.get_labels()[:, cluster_id]
-        cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
 
-        A = np.identity(self.d) * self.lamb
-        b = np.zeros([self.d, 1])
-        for cl_id in cluster_index:
-            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
-            b += self.b[:, :, cl_id]
-        A_inv = np.linalg.inv(A)
-        theta = np.dot(A_inv, b)[:, 0]
-        p = np.dot(theta.T, x) + self.alpha * np.sqrt(np.dot(x.T, np.dot(A_inv, x)))
+    def calc_ucb_cluster(self, i, user_id, model_id):
+        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        cluster_id = self.model.get_labels()[user_id, model_id]
+
+        A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
+        theta = self.theta_clust[:, model_id, cluster_id]
+        xAinvx = x.T.dot(A_inv).dot(x)
+        p = np.dot(theta.T, x) + self.alpha * np.sqrt(xAinvx)
 
         return p[0]
 
-    def calc_probabilities(self, i, user_id, cluster_id):
+    def calc_probabilities(self, i, user_id, model_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
-        labels = self.model.get_labels()[:, cluster_id]
-        cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
+        cluster_id = self.model.get_labels()[user_id, model_id]
 
-        A = np.identity(self.d) * self.lamb
-        b = np.zeros([self.d, 1])
-        for cl_id in cluster_index:
-            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
-            b += self.b[:, :, cl_id]
-        A_inv = np.linalg.inv(A)
-        theta = np.dot(A_inv, b)[:, 0]
-        p = np.dot(theta.T, x)
+        p = np.dot(self.theta_clust[:, model_id, cluster_id].T, x)
 
         return p[0]
 
     def reward_update(self, reward, i, user_id):
 
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
-
-        # if True:
-        #     labels = self.model.get_labels()[:, self.RC.best_option()]
-        #     cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id] and elem != user_id]
-        #     for i in cluster_index:
-        #         self.__reward_update_one_theta(reward, x, i, 0.1)
-
-        self.__reward_update_one_theta(reward, x, user_id, 1)
-
-        probs = np.zeros(self.len_c)
-        for j in range(self.len_c):
+        probs = np.zeros(self.models_amount)
+        for j in range(self.models_amount):
             probs[j] = self.calc_probabilities(i, user_id, j)
 
         self.RC.update(reward, probs)
+
+        self.__reward_update_one_theta(reward, user_id, i)
 
         # Se actualiza el cluster
         if self.cluster_initial_start != -1 and self.iteration > self.cluster_initial_start and \
                 self.iteration % self.cluster_iteration_ex == 0:
             self.model.fit(self.thetas.T)
+            for model_id in range(self.models_amount):
+                for cluster_id in range(self.clusters_amounts[model_id]):
+                    self.__recalculate_clusters(cluster_id, model_id)
+        else:
+            for model_id in range(self.models_amount):
+                self.__reward_update_cluster_theta(reward, user_id, i, model_id)
         self.iteration += 1
 
-    def __reward_update_one_theta(self, reward, x, user_id, factor_crecimiento):
-        #Check if this useful
-        self.A[:, :, user_id] += np.dot(x, x.T) * factor_crecimiento
-        self.b[:, :, user_id] += reward * x * factor_crecimiento
-        A_inv = np.linalg.inv(self.A[:, :, user_id])
-        theta = np.dot(A_inv, self.b[:, :, user_id])[:, 0]
-        self.thetas[:, user_id] = theta
+    def __recalculate_clusters(self, cluster_id, model_id):
+        labels = self.model.get_labels()[:, model_id]
+        cluster_index = [i for i, elem in enumerate(labels) if elem == cluster_id]
+
+        A = np.identity(self.d) * self.lamb
+        b = np.zeros([self.d, 1])
+        for cl_id in cluster_index:
+            A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
+            b += self.b[:, :, cl_id]
+        self.A_inv_clust[:, :, model_id, cluster_id] = np.linalg.inv(A)
+        self.theta_clust[:, model_id, cluster_id] = np.dot( self.A_inv_clust[:, :, model_id, cluster_id], b)[:, 0]
+
+
+    def __reward_update_one_theta(self, reward, user_id, i):
+        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        self.A[:, :, user_id] += np.dot(x, x.T)
+        self.b[:, :, user_id] += reward * x
+
+        A_inv = self.A_inv[:, :, user_id]
+        theta = self.thetas[:, user_id]
+        xAinvx = x.T.dot(A_inv).dot(x)
+
+        k_n = A_inv.dot(x) / (1 + xAinvx)
+        e_n = reward - x.T.dot(theta)[0] # it is matrix 1x1
+
+        self.A_inv[:, :, user_id] = A_inv - k_n.dot(x.T).dot(A_inv)
+        self.thetas[:, user_id] = theta + k_n.reshape(self.d) * e_n
+
+    def __reward_update_cluster_theta(self, reward, user_id, i, model_id):
+        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        cluster_id = self.model.get_labels()[user_id, model_id]
+
+        A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
+        theta = self.theta_clust[:, model_id, cluster_id]
+        xAinvx = x.T.dot(A_inv).dot(x)
+
+        k_n = A_inv.dot(x) / (1 + xAinvx)
+        e_n = reward - x.T.dot(theta)[0]
+
+        self.A_inv_clust[:, :, model_id, cluster_id] = A_inv - k_n.dot(x.T).dot(A_inv)
+        self.theta_clust[:, model_id, cluster_id] = theta + k_n.reshape(self.d) * e_n
 
 
 class Reward_Por_Cluster:
@@ -118,12 +147,12 @@ class Reward_Por_Cluster:
 
     def update(self, reward, probs):
         if np.max(probs) > 0:
-            reward = reward/np.max(probs)
+            reward = reward / np.max(probs)
         for i in range(self.cluster_amount):
             # Actualizar resultado por cada cluster
             self.k_reward[i] = self.k_reward[i] + (reward * probs[i] - self.k_reward[i]) / self.n
-            self.k_rewards[i, self.n-1] = self.k_reward[i]
-        self.best_options[self.n-1] = self.clusters_amounts[self.best_option()]
+            self.k_rewards[i, self.n - 1] = self.k_reward[i]
+        self.best_options[self.n - 1] = self.clusters_amounts[self.best_option()]
         # Update counts
         self.n += 1
 
@@ -152,6 +181,6 @@ class Reward_Por_Cluster:
         plt.show()
         plt.figure()
         plt.plot(self.best_options, label="best option")
-        plt.ylim(0, max(self.clusters_amounts)+1)
+        plt.ylim(0, max(self.clusters_amounts) + 1)
 
         plt.show()

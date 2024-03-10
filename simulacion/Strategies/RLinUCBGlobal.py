@@ -26,7 +26,9 @@ class RLinUCBGlobal(MAB):
 
     def reward_update(self, reward, i, user_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
+
         k_n = self.A_inv.dot(x)/( 1 + self.xAinvx)
-        e_n = reward - x.T.dot(self.theta)
+        e_n = reward - x.T.dot(self.theta)[0, 0]
+
         self.A_inv = self.A_inv - k_n.dot(x.T).dot(self.A_inv)
         self.theta = self.theta + k_n * e_n

@@ -12,13 +12,13 @@ class Agglomerative():
 
     def __init__(self, ks, user_amount: int):
         self.x = None
-        self.labels = np.zeros((user_amount, len(ks)))
+        self.labels = np.zeros((user_amount, len(ks)),dtype=int)
         self.ks = ks
 
     def fit(self, x):
         link = linkage(pdist(x), method='complete')
         for i in range(len(self.ks)):
-            self.labels[:, i] = fcluster(link, self.ks[i], criterion='maxclust')
+            self.labels[:, i] = fcluster(link, self.ks[i], criterion='maxclust') - 1
 
         self.x = x
 
@@ -32,7 +32,7 @@ class Agglomerative():
         for i in range(len(self.ks)):
             for j in range(self.ks[i]):
                 c = list(colors.cnames.values())[j + 120]
-                filtered_label = self.x[labels[:, i] == j + 1]
+                filtered_label = self.x[labels[:, i] == j]
                 plt.scatter(filtered_label[:, 0], filtered_label[:, 1], color=c)
             plt.xlim(-1, 1)
             plt.ylim(-1, 1)

@@ -30,7 +30,7 @@ class RLinUCB(MAB):
         theta = self.theta[:, :, user_id]
 
         k_n = A_inv.dot(x) / (1 + self.xAinvx[user_id])
-        e_n = reward - x.T.dot(theta)
+        e_n = reward - x.T.dot(theta)[0, 0]
 
         self.A_inv[:, :, user_id] = A_inv - k_n.dot(x.T).dot(A_inv)
         self.theta[:, :, user_id] = theta + k_n * e_n
