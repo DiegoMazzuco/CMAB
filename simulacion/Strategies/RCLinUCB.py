@@ -7,10 +7,12 @@ from .MAB import MAB
 from .Rewards import BernoulliFeature
 import matplotlib.colors as colors
 
+
 class RCLinUCB(MAB):
     def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
                  clusters_amounts, lamb=1,
-                 cluster_initial_start=1000, cluster_iteration_ex=1000, cluster_mix_rew_start=-1):
+                 cluster_initial_start=1000, cluster_iteration_ex=1000, best_option_iteration=100,
+                 cluster_mix_rew_start=-1):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
 
@@ -37,6 +39,8 @@ class RCLinUCB(MAB):
 
         self.model = Agglomerative(clusters_amounts, user_amount)
         self.RC = Reward_Por_Cluster(clusters_amounts, iters, d)
+        self.best_option = 0
+        self.best_option_iteration = best_option_iteration
 
     def get_model(self):
         return self.model
@@ -45,7 +49,8 @@ class RCLinUCB(MAB):
         return self.RC
 
     def calc_ucb(self, i, user_id):
-        return self.calc_ucb_cluster(i, user_id, self.RC.best_option())
+        best_option = self.RC.best_option() if self.iteration % self.best_option_iteration == 0 else self.best_option
+        return self.calc_ucb_cluster(i, user_id, best_option)
 
     def calc_ucb_cluster(self, i, user_id, model_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
@@ -53,10 +58,9 @@ class RCLinUCB(MAB):
 
         A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
         theta = self.theta_clust[:, model_id, cluster_id]
-        xAinvx = x.T.dot(A_inv).dot(x)
-        p = np.dot(theta.T, x) + self.alpha * np.sqrt(xAinvx)
+        xAinvx = x.T.dot(A_inv).dot(x)[0][0]
+        return np.dot(theta.T, x)[0] + self.alpha * math.sqrt(xAinvx)
 
-        return p[0]
 
     def calc_probabilities(self, i, user_id, model_id):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
@@ -98,8 +102,7 @@ class RCLinUCB(MAB):
             A += self.A[:, :, cl_id] - np.identity(self.d) * self.lamb
             b += self.b[:, :, cl_id]
         self.A_inv_clust[:, :, model_id, cluster_id] = np.linalg.inv(A)
-        self.theta_clust[:, model_id, cluster_id] = np.dot( self.A_inv_clust[:, :, model_id, cluster_id], b)[:, 0]
-
+        self.theta_clust[:, model_id, cluster_id] = np.dot(self.A_inv_clust[:, :, model_id, cluster_id], b)[:, 0]
 
     def __reward_update_one_theta(self, reward, user_id, i):
         x = self.reward_class.get_feature(i).reshape((self.d, 1))
@@ -111,7 +114,7 @@ class RCLinUCB(MAB):
         xAinvx = x.T.dot(A_inv).dot(x)
 
         k_n = A_inv.dot(x) / (1 + xAinvx)
-        e_n = reward - x.T.dot(theta)[0] # it is matrix 1x1
+        e_n = reward - x.T.dot(theta)[0]  # it is matrix 1x1
 
         self.A_inv[:, :, user_id] = A_inv - k_n.dot(x.T).dot(A_inv)
         self.thetas[:, user_id] = theta + k_n.reshape(self.d) * e_n
