@@ -39,7 +39,7 @@ class CLinUCB(MAB):
         return self.calc_ucb_cluster(i, user_id, self.RC.best_option())
 
     def calc_ucb_cluster(self, i, user_id, cluster_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         labels = self.model.get_labels()[:, cluster_id]
         cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
 
@@ -55,7 +55,7 @@ class CLinUCB(MAB):
         return p[0]
 
     def calc_probabilities(self, i, user_id, cluster_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         labels = self.model.get_labels()[:, cluster_id]
         cluster_index = [i for i, elem in enumerate(labels) if elem == labels[user_id]]
 
@@ -78,7 +78,7 @@ class CLinUCB(MAB):
 
         self.RC.update(reward, probs)
 
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
 
         self.__reward_update_one_theta(reward, x, user_id, 1)
 

@@ -16,7 +16,7 @@ class RLinUCB(MAB):
         self.alpha = alpha
 
     def calc_ucb(self, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         A_inv = self.A_inv[:, :, user_id]
         theta = self.theta[:, :, user_id]
         self.xAinvx[user_id] = x.T.dot(A_inv).dot(x)
@@ -25,7 +25,7 @@ class RLinUCB(MAB):
         return p[0]
 
     def reward_update(self, reward, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         A_inv = self.A_inv[:, :, user_id]
         theta = self.theta[:, :, user_id]
 

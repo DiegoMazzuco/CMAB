@@ -39,8 +39,13 @@ def get_yahoo_events(filenames):
     outlier = '109528'
     # Total 4681993
     breakThresshold = None
-    batch_size = 100000
+    batch_size = 200000
     b_num = 0
+
+    with open('users_parsed.pkl', 'rb') as fp:
+        users = pickle.load(fp)
+
+    user_ids = [u['id'] for u in users]
 
     with fileinput.input(files=filenames) as f:
         i = 0
@@ -56,7 +61,7 @@ def get_yahoo_events(filenames):
 
             article = (cols[0].split()[1])
 
-            if article != outlier:
+            if (user_id in user_ids) and article != outlier:
                 i += 1
 
                 article = int(article)

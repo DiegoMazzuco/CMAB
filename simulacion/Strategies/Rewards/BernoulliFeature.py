@@ -3,18 +3,19 @@ import math
 
 from matplotlib import pyplot as plt
 
+from .Reward import Reward
 
-class BernoulliFeature:
 
-    def __init__(self, k: int, d: int, user_amount: int,
-                 max_prob = 0.5, epsilon=0.01, cluster_thetas = None,
+class BernoulliFeature(Reward):
+
+    def __init__(self, k: int, d: int, user_amount: int, max_prob=0.5, epsilon=0.01, cluster_thetas=None,
                  epsilon_cluster=0.03):
-        self.contextos = np.zeros((k, d))
+        super().__init__(k)
+        self.contextos = np.zeros((k, d, 1))
         self.probablities = np.zeros((user_amount, k))
         self.best_thetas = np.zeros((user_amount, d))
         self.thetas = np.zeros((user_amount, d))
         self.d = d
-        self.k = k
         self.userAmount = user_amount
         self.epsilon = epsilon
         self.epsilon_cluster = epsilon_cluster
@@ -54,14 +55,14 @@ class BernoulliFeature:
 
     def init_contexto(self):
         for i in range(self.k):
-            contexto = np.random.randn(self.d)
+            contexto = np.random.randn(self.d, 1)
             contexto /= np.linalg.norm(contexto)
-            self.contextos[i, :] = contexto
+            self.contextos[i, :, :] = contexto
 
     def init_probabilities(self):
         for u in range(self.userAmount):
             for i in range(self.k):
-                self.probablities[u, i] = np.dot(self.best_thetas[u], self.contextos[i])
+                self.probablities[u, i] = np.dot(self.best_thetas[u], self.contextos[i, :, :])
 
     def init(self):
         self.init_user()
@@ -72,7 +73,7 @@ class BernoulliFeature:
         return self.contextos
 
     def get_feature(self, a):
-        return self.contextos[a]
+        return self.contextos[a, :, :]
 
     def get_theta(self):
         return self.thetas

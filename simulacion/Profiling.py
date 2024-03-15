@@ -1,7 +1,7 @@
 # Tests
 import cProfile
 from pstats import Stats
-
+import os
 import numpy as np
 
 from simulacion.Strategies.RCLinUCB import RCLinUCB

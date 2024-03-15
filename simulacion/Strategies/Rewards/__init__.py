@@ -1,1 +1,1 @@
-__all__ = ["BernoulliFeature"]
+__all__ = ["BernoulliFeature","Reward","OffFeature"]

@@ -1,6 +1,8 @@
 from abc import ABC
 
 import random as rd
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 
 from simulacion.Strategies.Rewards.BernoulliFeature import BernoulliFeature

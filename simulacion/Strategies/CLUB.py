@@ -36,7 +36,7 @@ class CLUB(MAB):
         self.lamb = lamb
 
     def calc_ucb(self, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         cluster_index = [i for i, elem in enumerate(self.clusters) if elem == self.clusters[user_id]]
 
         A = np.identity(self.d) * self.lamb
@@ -52,7 +52,7 @@ class CLUB(MAB):
         return p[0]
 
     def reward_update(self, reward, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         self.__reward_update_one_theta(reward, x, user_id, 1)
 
         # Se actualiza el cluster

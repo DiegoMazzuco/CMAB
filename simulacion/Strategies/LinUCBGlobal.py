@@ -15,7 +15,7 @@ class LinUCBGlobal(MAB):
         self.alpha = alpha
 
     def calc_ucb(self, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         A_inv = np.linalg.inv(self.A)
         theta = np.dot(A_inv, self.b)
         p = np.dot(theta.T, x) + self.alpha * np.sqrt(np.dot(x.T, np.dot(A_inv, x)))
@@ -23,6 +23,6 @@ class LinUCBGlobal(MAB):
         return p[0]
 
     def reward_update(self, reward, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         self.A += np.dot(x, x.T)
         self.b += reward * x

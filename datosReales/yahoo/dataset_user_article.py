@@ -114,6 +114,20 @@ def get_yahoo_events(filenames):
 
     # Tests
 
+def parseUser():
+    users = None
+    amount_users = 100
+    with open('users.pkl', 'rb') as fp:
+        users = pickle.load(fp)
+        print('Users array')
+
+    users = sorted(users, key=lambda user: user['clicks'])
+    users = users[-amount_users:]
+    with open('users_parsed.pkl', 'wb') as fp:
+        pickle.dump(list(users), fp)
+    print('finished')
+
+
 
 if __name__ == '__main__':
     files = ("ydata-fp-td-clicks-v1_0.20090501")
@@ -125,7 +139,11 @@ if __name__ == '__main__':
         print('Articles dictionary')
         print(articles)
 
+    parseUser()
+
     with open('users.pkl', 'rb') as fp:
         users = pickle.load(fp)
         print('Users array')
         print(users)
+
+

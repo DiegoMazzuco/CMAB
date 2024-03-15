@@ -19,7 +19,7 @@ class WoodburyLinUCBGlobal(MAB):
         self.alpha = alpha
 
     def calc_ucb(self, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         self.theta = np.dot(self.A_inv, self.b)
         self.xAx = x.T.dot(self.A_inv).dot(x)
         p = np.dot(self.theta.T, x) + self.alpha * np.sqrt(self.xAx)
@@ -27,6 +27,6 @@ class WoodburyLinUCBGlobal(MAB):
         return p[0]
 
     def reward_update(self, reward, i, user_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         self.A_inv = self.A_inv - self.A_inv.dot(x.dot(x.T)).dot(self.A_inv) / (1 + self.xAx)
         self.b += reward * x

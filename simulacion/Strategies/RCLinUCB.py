@@ -11,7 +11,7 @@ import matplotlib.colors as colors
 class RCLinUCB(MAB):
     def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
                  clusters_amounts, lamb=1,
-                 cluster_initial_start=1000, cluster_iteration_ex=1000, best_option_iteration=100,
+                 cluster_initial_start=1000, cluster_iteration_ex=1000, best_option_iteration=10,
                  cluster_mix_rew_start=-1):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
@@ -53,7 +53,7 @@ class RCLinUCB(MAB):
         return self.calc_ucb_cluster(i, user_id, best_option)
 
     def calc_ucb_cluster(self, i, user_id, model_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         cluster_id = self.model.get_labels()[user_id, model_id]
 
         A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
@@ -63,7 +63,7 @@ class RCLinUCB(MAB):
 
 
     def calc_probabilities(self, i, user_id, model_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         cluster_id = self.model.get_labels()[user_id, model_id]
 
         p = np.dot(self.theta_clust[:, model_id, cluster_id].T, x)
@@ -105,7 +105,7 @@ class RCLinUCB(MAB):
         self.theta_clust[:, model_id, cluster_id] = np.dot(self.A_inv_clust[:, :, model_id, cluster_id], b)[:, 0]
 
     def __reward_update_one_theta(self, reward, user_id, i):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         self.A[:, :, user_id] += np.dot(x, x.T)
         self.b[:, :, user_id] += reward * x
 
@@ -120,7 +120,7 @@ class RCLinUCB(MAB):
         self.thetas[:, user_id] = theta + k_n.reshape(self.d) * e_n
 
     def __reward_update_cluster_theta(self, reward, user_id, i, model_id):
-        x = self.reward_class.get_feature(i).reshape((self.d, 1))
+        x = self.reward_class.get_feature(i)
         cluster_id = self.model.get_labels()[user_id, model_id]
 
         A_inv = self.A_inv_clust[:, :, model_id, cluster_id]

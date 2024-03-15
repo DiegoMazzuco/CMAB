@@ -6,21 +6,17 @@ from .Reward import Reward
 
 class OffFeature(Reward):
 
-    def __init__(self, k: int, d: int, articles, users):
+    def __init__(self, k: int, d: int, articles):
         super().__init__(k, d)
         self.articles = articles
-        self.users = users
         self.eventIter = -1
         self.event_batch = 1
-        with open('yahoo/events1.pkl', 'rb') as fp:
+        with open('../datosReales/yahoo/events1.pkl', 'rb') as fp:
             self.events = pickle.load(fp)
         self.event_batch_size = len(self.events)
 
     def get_products(self):
         return self.articles
-
-    def get_users(self):
-        return self.users
 
     def get_batch_size(self):
         return self.event_batch_size
@@ -28,12 +24,6 @@ class OffFeature(Reward):
     def get_available_products(self, eventIter):
         try:
             return self.events[eventIter][2]
-        except:
-            return None
-
-    def get_corresponding_user(self, eventIter):
-        try:
-            return self.events[eventIter][3]
         except:
             return None
 
@@ -48,7 +38,7 @@ class OffFeature(Reward):
         if self.eventIter == self.event_batch_size:
             self.eventIter = 0
             self.event_batch += 1
-            with open('yahoo/events'+str(self.event_batch)+'.pkl', 'rb') as fp:
+            with open('../datosReales/yahoo/events'+str(self.event_batch)+'.pkl', 'rb') as fp:
                 self.events = pickle.load(fp)
             self.event_batch_size = len(self.events)
         if len(self.events) == self.eventIter:
