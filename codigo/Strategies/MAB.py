@@ -1,15 +1,12 @@
 from abc import ABC
 
-import random as rd
-from concurrent.futures import ThreadPoolExecutor
-
 import numpy as np
 
-from simulacion.Strategies.Rewards.BernoulliFeature import BernoulliFeature
+from .Rewards import Reward
 
 
 class MAB(ABC):
-    def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, user_amount: int):
+    def __init__(self, k: int, iters: int, reward_class: Reward, user_amount: int):
         """
             Sum up two integers
             Arguments:
@@ -48,23 +45,36 @@ class MAB(ABC):
         return None
 
     def select_action(self, user_id: int):
+        available_products = self.reward_class.get_available_products()
         bandits = np.zeros(self.k)
 
-        for i in range(self.k):
-            bandits[i] = self.calc_ucb(i, user_id)
+        if available_products is None:
 
-        return np.argmax(bandits)
+            for i in range(self.k):
+                bandits[i] = self.calc_ucb(i, user_id)
+
+            return np.argmax(bandits)
+
+        else:
+            for i in available_products:
+                bandits[i] = self.calc_ucb(i, user_id)
+            return np.argmax(bandits)
 
     def pull_reward(self, user_id):
+        valid = self.reward_class.advance_iter()
         a = self.select_action(user_id)
 
-        reward = self.reward_class.get_reward(user_id, a)
+        if valid:
+            reward = self.reward_class.get_reward(user_id, a)
 
-        if reward is None:
-            return None
-        self.reward_update(reward, a, user_id)
+            if reward is None:
+                return None
+            self.reward_update(reward, a, user_id)
 
-        return reward
+            return reward
+        else:
+            print("Se llego a la iteracion maxima")
+            return -1
 
     def run(self):
         """
@@ -72,12 +82,13 @@ class MAB(ABC):
             Returns:
                 mean rewards
         """
-        for i in range(self.iters):
-            # Se elije un usuario al azar
-            user_id = rd.randint(0, self.user_amount-1)
-            reward = self.pull_reward(user_id)
-            if reward is None:
-                break
+        for i in range(self.iters, ):
+            reward = None
+            while reward is None:
+                user_id = self.reward_class.get_user()
+                reward = self.pull_reward(user_id)
+            if reward == -1:
+                return self.rewards
             # Update the average
             self.mean_reward = self.mean_reward + (
                     reward - self.mean_reward) / (i + 1)
@@ -85,4 +96,5 @@ class MAB(ABC):
             self.rewards[i] = self.mean_reward
             if i % 1000 == 0:
                 print(str(i)+'/'+str(self.iters))
+        self.reward_class.reset()
         return self.rewards

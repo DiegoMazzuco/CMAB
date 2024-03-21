@@ -126,7 +126,7 @@ class Reward_Por_Cluster:
         # Aplico AIC, para penalizar los algoritmos mas complejos con mas clusters
         options = np.zeros(self.cluster_amount)
         for i in range(self.cluster_amount):
-            if self.k_reward[i] != 0:
+            if self.k_reward[i] > 0.000001:
                 options[i] = -math.log(self.k_reward[i]) + self.clusters_amounts[i] * self.d * math.log(self.n) / self.n
             else:
                 # En caso de ser 0 reward se pone como Nan para ser ignorado por el np.nanargmin

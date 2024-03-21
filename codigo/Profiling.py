@@ -4,8 +4,8 @@ from pstats import Stats
 import os
 import numpy as np
 
-from simulacion.Strategies.RCLinUCB import RCLinUCB
-from simulacion.Strategies.Rewards.BernoulliFeature import BernoulliFeature
+from codigo.Strategies.RCLinUCB import RCLinUCB
+from codigo.Strategies.Rewards.BernoulliFeature import BernoulliFeature
 
 def main():
     iterations = 10000
@@ -24,7 +24,8 @@ def main():
     clusters_amounts = [1, 2, 4]
 
     reward_class = BernoulliFeature(k, d, user_amount, max_prob, noise, best_theta)
-    linucbg     = RCLinUCB(k, iterations, reward_class, d, user_amount, alpha, clusters_amounts, lamb, 500, 500 )
+    linucbg     = RCLinUCB(k, iterations, reward_class, d, user_amount, alpha, clusters_amounts, lamb, 500, 500,
+                           100)
     linucbg.run()
 
 if __name__ == '__main__':

@@ -2,4 +2,4 @@
 .idea/
 __pycache__/
 **.pkl
-datosReales/yahoo/ydata-fp-td-clicks-v1_0.20090501
+datos/yahoo/ydata-fp-td-clicks-v1_0.20090501

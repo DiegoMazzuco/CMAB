@@ -4,37 +4,37 @@ import math
 
 from .Clusters import Agglomerative
 from .MAB import MAB
-from .Rewards import BernoulliFeature
+from .Rewards import Reward
 import matplotlib.colors as colors
 
 
 class RCLinUCB(MAB):
-    def __init__(self, k: int, iters: int, reward_class: BernoulliFeature, d: int, user_amount: int, alpha: float,
+    def __init__(self, k: int, iters: int, reward_class: Reward, d: int, user_amount: int, alpha: float,
                  clusters_amounts, lamb=1,
-                 cluster_initial_start=1000, cluster_iteration_ex=1000, best_option_iteration=10,
-                 cluster_mix_rew_start=-1):
+                 cluster_initial_start=1000, cluster_iteration_ex=1000, best_option_iteration=10):
         super().__init__(k, iters, reward_class, user_amount)
         self.d = d
+        random_start = 0.01
 
         self.lamb = lamb
         self.A = np.dstack([np.identity(d)] * user_amount) * lamb
         self.A_inv = np.dstack([np.identity(d)] * user_amount) / lamb
-        self.b = np.dstack([np.zeros([d, 1])] * user_amount)
+        self.b = np.random.rand(d, 1, user_amount) * random_start
         self.thetas = np.zeros([d, user_amount])
+        for i in range(user_amount):
+            self.thetas[:, i] = np.dot(self.A_inv[:, :, i], self.b[:, 0, i])
 
         # clusters
         self.models_amount = len(clusters_amounts)
         max_clust_amount = max(clusters_amounts)
         self.clusters_amounts = clusters_amounts
-        self.theta_clust = np.zeros([d, self.models_amount, max_clust_amount])
+        self.theta_clust = np.random.rand(d, self.models_amount, max_clust_amount) * random_start
         A_inv_clust = np.dstack([np.identity(d)] * self.models_amount * max_clust_amount) / lamb
         self.A_inv_clust = A_inv_clust.reshape((d,d,self.models_amount,max_clust_amount))
 
         self.alpha = alpha
-        self.cluster = np.zeros(user_amount)
         self.cluster_initial_start = cluster_initial_start
         self.cluster_iteration_ex = cluster_iteration_ex
-        self.cluster_mix_rew_start = cluster_mix_rew_start
         self.iteration = 0
 
         self.model = Agglomerative(clusters_amounts, user_amount)
@@ -59,7 +59,10 @@ class RCLinUCB(MAB):
         A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
         theta = self.theta_clust[:, model_id, cluster_id]
         xAinvx = x.T.dot(A_inv).dot(x)[0][0]
-        return np.dot(theta.T, x)[0] + self.alpha * math.sqrt(xAinvx)
+        aux = 0
+        if xAinvx > 0:
+            aux = self.alpha * math.sqrt(xAinvx)
+        return np.dot(theta.T, x)[0] + aux
 
 
     def calc_probabilities(self, i, user_id, model_id):
@@ -111,7 +114,7 @@ class RCLinUCB(MAB):
 
         A_inv = self.A_inv[:, :, user_id]
         theta = self.thetas[:, user_id]
-        xAinvx = x.T.dot(A_inv).dot(x)
+        xAinvx = x.T.dot(A_inv).dot(x)[0][0]
 
         k_n = A_inv.dot(x) / (1 + xAinvx)
         e_n = reward - x.T.dot(theta)[0]  # it is matrix 1x1
@@ -125,7 +128,7 @@ class RCLinUCB(MAB):
 
         A_inv = self.A_inv_clust[:, :, model_id, cluster_id]
         theta = self.theta_clust[:, model_id, cluster_id]
-        xAinvx = x.T.dot(A_inv).dot(x)
+        xAinvx = x.T.dot(A_inv).dot(x)[0][0]
 
         k_n = A_inv.dot(x) / (1 + xAinvx)
         e_n = reward - x.T.dot(theta)[0]
@@ -163,7 +166,7 @@ class Reward_Por_Cluster:
         # Aplico AIC, para penalizar los algoritmos mas complejos con mas clusters
         options = np.zeros(self.cluster_amount)
         for i in range(self.cluster_amount):
-            if self.k_reward[i] != 0:
+            if self.k_reward[i] > 0.000001:
                 options[i] = -math.log(self.k_reward[i]) + self.clusters_amounts[i] * self.d * math.log(self.n) / self.n
             else:
                 # En caso de ser 0 reward se pone como Nan para ser ignorado por el np.nanargmin

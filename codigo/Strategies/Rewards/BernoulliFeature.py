@@ -2,6 +2,7 @@ import numpy as np
 import math
 
 from matplotlib import pyplot as plt
+import random as rd
 
 from .Reward import Reward
 
@@ -10,12 +11,12 @@ class BernoulliFeature(Reward):
 
     def __init__(self, k: int, d: int, user_amount: int, max_prob=0.5, epsilon=0.01, cluster_thetas=None,
                  epsilon_cluster=0.03):
-        super().__init__(k)
         self.contextos = np.zeros((k, d, 1))
         self.probablities = np.zeros((user_amount, k))
         self.best_thetas = np.zeros((user_amount, d))
         self.thetas = np.zeros((user_amount, d))
         self.d = d
+        self.k = k
         self.userAmount = user_amount
         self.epsilon = epsilon
         self.epsilon_cluster = epsilon_cluster
@@ -26,6 +27,9 @@ class BernoulliFeature(Reward):
 
     def reset(self):
         self.init()
+
+    def get_user(self):
+        return rd.randint(0, self.userAmount-1)
 
     def get_cluster_thetas(self):
         if self.cluster_thetas is None:
