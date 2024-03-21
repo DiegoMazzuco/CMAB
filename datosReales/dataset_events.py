@@ -38,11 +38,11 @@ def get_yahoo_events(filenames):
     # Remover los outliers que no tienen features
     outlier = '109528'
     # Total 4681993
-    breakThresshold = None
-    batch_size = 200000
+    breakThresshold = 990000
+    batch_size = 100000
     b_num = 0
 
-    with open('users_parsed.pkl', 'rb') as fp:
+    with open('users.pkl', 'rb') as fp:
         users = pickle.load(fp)
 
     user_ids = [u['id'] for u in users]
@@ -53,7 +53,7 @@ def get_yahoo_events(filenames):
             cols = line.split('|')
 
             user_feature = cols[1].split()[1:6]
-            user_feature = [float(f[2:]) for f in user_feature]
+            user_feature = np.array([float(f[2:]) for f in user_feature]).reshape((len(user_feature), 1))
 
             user_id = 0
             for j in range(len(user_feature)):
@@ -61,7 +61,7 @@ def get_yahoo_events(filenames):
 
             article = (cols[0].split()[1])
 
-            if (user_id in user_ids) and article != outlier:
+            if (user_ids is not None and user_id in user_ids) and article != outlier:
                 i += 1
 
                 article = int(article)
@@ -87,7 +87,7 @@ def get_yahoo_events(filenames):
     print(b_num * batch_size + i)
     if len(events) != 0:
         with open('events' + str(b_num + 1) + '.pkl', 'wb') as fp:
-            print(events)
+            #print(events)
             pickle.dump(events, fp)
 
     # Tests

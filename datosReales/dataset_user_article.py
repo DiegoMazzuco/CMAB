@@ -13,8 +13,11 @@ import numpy as np
 import fileinput
 import pickle
 
+amount_users = None
+minimun_amount_clicks = 2
 
-def get_yahoo_events(filenames):
+
+def get_yahoo_users(filenames):
     """
     Reads a stream of events from the list of given files.
     
@@ -34,7 +37,6 @@ def get_yahoo_events(filenames):
                  3 : [pool_indexes]
              ]
     """
-    articles = {}
     users = {}
     # Remover los outliers que no tienen features
     outlier = '109528'
@@ -69,8 +71,97 @@ def get_yahoo_events(filenames):
             if article != outlier:
                 i += 1
 
+                click = cols[0].split()[2] == '1'
+
+                if click:
+                    #user
+                    click_amount += 1
+                    users[user_id]['clicks'] += 1
+                users[user_id]['views'] += 1
+
+                if i % 1000 == 0:
+                    print(len(users))
+
+                if breakThresshold is not None and i == breakThresshold:
+                    break
+
+    print('Probabilidad Random')
+    print(click_amount*100/i)
+
+    with open('users_un_parsed.pkl', 'wb') as fp:
+        pickle.dump(list(users.values()), fp)
+    print('finished')
+
+    # Tests
+
+def parseUser():
+    print('Empezar parsear usarios')
+    with open('users_un_parsed.pkl', 'rb') as fp:
+        users = pickle.load(fp)
+        print('Users array')
+
+    if amount_users is not None:
+        users = sorted(users, key=lambda user: user['clicks'])
+        users = users[ -amount_users:]
+    if minimun_amount_clicks is not None:
+        users = [u for u in users if u['clicks'] > minimun_amount_clicks]
+    with open('users.pkl', 'wb') as fp:
+        pickle.dump(list(users), fp)
+    print('finished to parse users')
+
+def get_articles(filenames):
+    """
+    Reads a stream of events from the list of given files.
+
+    Parameters
+    ----------
+    filenames : list
+        List of filenames
+
+    Stores
+    -------
+    articles : [article_ids]
+    features : [[article_1_features] .. [article_n_features]]
+      : [
+                 0 : displayed_article_index (relative to the pool),
+                 1 : user_click,
+                 2 : [user_features],
+                 3 : [pool_indexes]
+             ]
+    """
+
+    print('Empezar obtener articulos')
+    with open('users.pkl', 'rb') as fp:
+        users = pickle.load(fp)
+        print('Users array')
+    users = [u['id'] for u in users]
+
+    # Remover los outliers que no tienen features
+    outlier = '109528'
+    # Total 4681993
+    # Probabilidad 4.07%
+    breakThresshold = None
+    click_amount = 0
+
+    with fileinput.input(files=filenames) as f:
+        i = 0
+        for line in f:
+            cols = line.split('|')
+
+            user_feature = cols[1].split()[1:6]
+            user_feature = [float(f[2:]) for f in user_feature]
+
+            user_id = 0
+            for j in range(len(user_feature)):
+                user_id += int(user_feature[j] * 1000000) ** j
+
+            article = (cols[0].split()[1])
+
+            if article != outlier and (user_id in users):
+                i += 1
+
                 feature = [f for f in cols if article in f][1].split()[1:6]
-                feature = [float(f[2:]) for f in feature]
+                feature = np.array([float(f[2:]) for f in feature]).reshape((len(feature), 1))
 
                 article = int(article)
 
@@ -85,16 +176,12 @@ def get_yahoo_events(filenames):
                 click = cols[0].split()[2] == '1'
 
                 if click:
-                    #user
-                    print(i)
                     click_amount += 1
-                    users[user_id]['clicks'] += 1
-                    #article
-                    print(i)
                     click_amount += 1
                     articles[article]['clicks'] += 1
                 articles[article]['views'] += 1
-                users[user_id]['views'] += 1
+                if i % 1000 == 0:
+                    print(str(i)+"/4681993")
 
                 if breakThresshold is not None and i == breakThresshold:
                     break
@@ -103,47 +190,29 @@ def get_yahoo_events(filenames):
         articles[article]['probability'] = articles[article]['clicks'] / articles[article]['views']
 
     print('Probabilidad Random')
-    print(click_amount*100/i)
+    print(click_amount * 100 / i)
 
     with open('articles.pkl', 'wb') as fp:
         pickle.dump(articles, fp)
 
-    with open('users.pkl', 'wb') as fp:
-        pickle.dump(list(users.values()), fp)
     print('finished')
-
-    # Tests
-
-def parseUser():
-    users = None
-    amount_users = 100
-    with open('users.pkl', 'rb') as fp:
-        users = pickle.load(fp)
-        print('Users array')
-
-    users = sorted(users, key=lambda user: user['clicks'])
-    users = users[-amount_users:]
-    with open('users_parsed.pkl', 'wb') as fp:
-        pickle.dump(list(users), fp)
-    print('finished')
-
 
 
 if __name__ == '__main__':
     files = ("ydata-fp-td-clicks-v1_0.20090501")
 
-    get_yahoo_events(files)
-
-    with open('articles.pkl', 'rb') as fp:
-        articles = pickle.load(fp)
-        print('Articles dictionary')
-        print(articles)
-
+    #get_yahoo_users(files)
     parseUser()
+
+    get_articles(files)
 
     with open('users.pkl', 'rb') as fp:
         users = pickle.load(fp)
         print('Users array')
-        print(users)
+        #print(users)
 
+    with open('articles.pkl', 'rb') as fp:
+        articles = pickle.load(fp)
+        print('Articles dictionary')
+        #print(articles)
 
